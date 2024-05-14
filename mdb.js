@@ -1,11 +1,12 @@
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const { ObjectId } = require('mongodb'); // or ObjectID 
 
 
-var client = null;
-var rooms = null;
 
 
 module.exports = {
+    client: null,
+    collection: null,
 
     start: function () {
         const uri = "mongodb+srv://stephen2:888888@newdev.ob1jxog.mongodb.net/?retryWrites=true&w=majority&appName=newdev";
@@ -27,7 +28,8 @@ module.exports = {
                 await client.db("admin").command({ ping: 1 });
 
                 const database = client.db("test");
-                rooms = database.collection("rooms");
+                collection = database.collection("rooms");
+                // console.log("collection is:", collection); 
 
                 console.log("Pinged your deployment. You successfully connected to MongoDB!");
             }
@@ -49,13 +51,42 @@ module.exports = {
         return 100;
     },
 
+    getAll: async function () {
+        let flag;
+        let data
+        await collection.find({}).toArray() // since otherwise it is a cursor
+            .then(result => {
+                console.log("retrieved successfully: "+result);
+                data=JSON.stringify(result);
+                console.log("retrieved JSON: ", data);
+                flag=0;
+            })
+            .catch(err => {
+                console.error(`Retrival failed with error: ${err}`);
+                flag =-1;
+            })
+
+        if (flag==0)
+            {
+                console.log(data);
+                return {"message":data};
+            }
+        else 
+        {
+            console.log("flag is:", flag);
+            return {"message":-1};
+        }
+    },
+
+
+
     insert: async function (newObject) {
         let flag = 0;
 
         console.log(newObject);
         try {
             // Insert the defined document into the  collection
-            const result = await rooms.insertOne(newObject);
+            const result = await collection.insertOne(newObject);
 
             // Print the ID of the inserted document
             console.log(`A document was inserted with the _id: ${result.insertedId}`);
@@ -71,16 +102,37 @@ module.exports = {
         return flag;
     },
 
-    deleteOne: async function (query) {
-        try {
-            console.log("query is", query);
+    deleteOneByName: async function (query) {
 
-            const result = await rooms.deleteOne(query);
-        }
-        catch {
-            console.log("something wrong");
-        }
-        finally { }
+        console.log("query is", query);
+
+        collection.deleteOne(query)
+            .then(result => {
+                console.log(`Deleted ${result.deletedCount} item.`);
+                return 0;
+            })
+            .catch(err => {
+                console.error(`Delete failed with error: ${err}`);
+                return -1;
+            })
+
+    },
+
+    deleteOneById: async function (id) {
+        let flag = 0;
+        let query = { '_id': new ObjectId(id) };
+        //despite deprecated, still working here using ObjectId. 
+
+        await collection.deleteOne(query)
+            .then(result => {
+                console.log(`Deleted ${result.deletedCount} item.`);
+                flag = result.deletedCount;
+            })
+            .catch(err => {
+                console.error(`Delete failed with error: ${err}`);
+                flag = -1;
+            })
+        return flag;
 
     }
 

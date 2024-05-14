@@ -5,22 +5,24 @@ const express = require('express'); // for CJS (Common JS Modle)
 const app = express();
 const port = process.env.port || 3007;
 
-app.use(express.urlencoded({extended:true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-const mdb1= require('./mdb');
-console.log(mdb1.f1());
+const mdb1 = require('./mdb');
 mdb1.start();
 
-let data = [
-    { "name": "Arjun Tripathi", "course": "MCA", "roll_no": "14", "id": 1},
-    { "name": "Rahul Durgapal", "course": "MCA", "roll_no": "36", "id": 2 },
-    { "name": "Aman Yadav", "course": "MCA", "roll_no": "08", "id": 3}
-];
 
+app.get('/', async function (req, res) {
 
-app.get('/', function (req, res) {
-    res.status(200).json(data);
+    let result = await mdb1.getAll();
+    console.log("Result is: "+result);
+
+    if (result.message==-1)
+            res.status(404).json(result);   
+    else
+    {   console.log("all is:",JSON.stringify( result.message));
+        res.status(200).json(JSON.stringify(result.message));  
+    }
 });
 
 app.get("/:id", function (req, res) {
@@ -34,34 +36,33 @@ app.get("/:id", function (req, res) {
     }
 });
 
-app.post('/', 
-async function (req, res) {
-    let resData;
-   
-    console.log("debug:"+JSON.stringify(req.body));
+app.post('/',
+    async function (req, res) {
+        let resData;
 
-    let newItem = {
-        name: req.body.name,
-        course: req.body.course,
-        roll_no: req.body.roll_no
-    }
+        console.log("debug in post:" + JSON.stringify(req.body));
 
-    result=  await mdb1.insert(newItem);
-    console.result;
-    
-    console.log("insert flag:", result);
+        let newItem = {
+            name: req.body.name,
+            course: req.body.course,
+            roll_no: req.body.roll_no
+        }
 
-    if (result==0)
-        {
-            resData={'message': "successfully created"};
+        result = await mdb1.insert(newItem);
+        console.result;
+
+        console.log("insert flag:", result);
+
+        if (result == 0) {
+            resData = { 'message': "successfully created" };
             res.status(201).json(resData);
         }
-        else{
-            resData={'message': "Not created"};
+        else {
+            resData = { 'message': "Not created" };
             res.status(400).json(resData);
         }
 
-});
+    });
 
 
 app.put('/:id', function (req, res) {
@@ -89,24 +90,55 @@ app.put('/:id', function (req, res) {
 });
 
 
+
 app.delete('/:id', async function (req, res) {
     let resData;
-   
-        console.log("id: ", req.params.id);
 
-        query={"name": `ObjectId("${req.params.id}")`}
-        mdb1.deleteOne(query);
-        
-        resData={'message': 'Delete Successfully'}
+    console.log("delete id: ", req.params.id);
+    
+    //query = { "_id": `ObjectId('${req.params.id}')` }
+    
+    let result =await mdb1.deleteOneById(req.params.id);
+    console.log("result", result);
+    // here result is number of docs deleted
+    if (result >= 0) {
+        resData = { 'message': 'Delete Successfully' }
 
-        res.sendStatus(200); //.json(resData);
-
-/*
-        resData={
+        res.sendStatus(200);
+    }
+    else {
+        resData = {
             'message': 'unable to delete data because data doesn\'t even exist'
         }
-        res.sendStatus(404).json(resData);
-    */
+        res.sendStatus(404);
+    }
+
+});
+
+
+
+
+app.delete('/ByName/:name', async function (req, res) {
+    let resData;
+
+    console.log("name: ", req.params.name);
+    
+    //query = { "_id": `ObjectId('${req.params.id}')` }
+    
+    query = { "name": `${req.params.name}` }
+    let result = mdb1.deleteOneByName(query);
+
+    if (result == 0) {
+        resData = { 'message': 'Delete Successfully' }
+
+        res.sendStatus(200);
+    }
+    else {
+        resData = {
+            'message': 'unable to delete data because data doesn\'t even exist'
+        }
+        res.sendStatus(404);
+    }
 
 });
 
